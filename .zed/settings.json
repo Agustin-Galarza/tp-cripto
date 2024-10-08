@@ -1,0 +1,9 @@
+{
+  "languages": {
+    "Java": {
+      "tab_size": 4,
+      "formatter": "prettier",
+      "format_on_save": "on"
+    }
+  }
+}
