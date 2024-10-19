@@ -1,6 +1,7 @@
 package ar.edu.itba.config;
 
-public enum EncryptionAlgorithm {
+public enum EncryptionAlgorithmType {
+    PLAIN_TEXT,
     AES128,
     AES192,
     AES256,

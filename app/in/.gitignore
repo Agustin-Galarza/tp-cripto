@@ -1,0 +1,17 @@
+# Ignore all images
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+*.tif
+*.svg
+*.ico
+*.webp
+
+# For now, ignore secret files
+*.txt
+
+# Always allow gitignore
+!.gitignore

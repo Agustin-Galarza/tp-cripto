@@ -1,0 +1,15 @@
+# Ignore all images
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+*.tif
+*.svg
+*.ico
+*.webp
+
+*.txt
+# Always allow gitignore
+!.gitignore

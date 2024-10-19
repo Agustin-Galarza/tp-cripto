@@ -1,8 +1,12 @@
 package ar.edu.itba;
 
 import ar.edu.itba.config.*;
+import ar.edu.itba.steganography.*;
+import ar.edu.itba.utils.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.util.*;
 import javax.imageio.ImageIO;
 import org.apache.commons.cli.*;
@@ -31,6 +35,7 @@ public class Main {
     public static void main(String[] args) {
         var complete = false;
         var options = new Options();
+        System.out.println("Initializing");
 
         try {
             options.addOption(
@@ -52,7 +57,15 @@ public class Main {
                     "embed",
                     Boolean.class,
                     false,
-                    "When present, the program will embed the message"
+                    "When present, the program will embed the message. If this param is not present, then 'extract' must be."
+                )
+            );
+            options.addOption(
+                createOption(
+                    "extract",
+                    Boolean.class,
+                    false,
+                    "When present, the program will extract the embedded message from an image. If this param is not present, then 'embed' must be."
                 )
             );
             options.addOption(
@@ -98,6 +111,7 @@ public class Main {
                     "Encryption password. This argument is required if an encryption algorithm is specified"
                 )
             );
+            // TODO: Add extraction arguments
 
             var parser = new DefaultParser();
             var cmd = parser.parse(options, args);
@@ -107,15 +121,48 @@ public class Main {
                 System.exit(0);
             }
 
+            System.out.println("Parsing");
             var config = ProgramConfig.fromParsed(cmd);
-            System.out.println("Config:");
-            System.out.println(config);
+
+            var codec = new FileCodec(
+                switch (config.steg()) {
+                    case SteganographyAlgorithmType.LSB1 -> new LSB1Codec();
+                    case SteganographyAlgorithmType.LSB4,
+                        SteganographyAlgorithmType.LSBI -> throw new Exception(
+                        "Not implemented"
+                    );
+                },
+                switch (config.enc()) {
+                    case EncryptionAlgorithmType.PLAIN_TEXT -> null;
+                    case EncryptionAlgorithmType.AES128,
+                        EncryptionAlgorithmType.AES192,
+                        EncryptionAlgorithmType.AES256,
+                        EncryptionAlgorithmType._3DES -> throw new Exception(
+                        "Not Implemented"
+                    );
+                }
+            );
+
+            if (config.embed()) {
+                codec.encode(
+                    config.secretMessage(),
+                    config.coverImage(),
+                    config.stegoImage()
+                );
+            } else {
+                codec.decode(config.coverImage(), config.stegoImage());
+            }
+
             complete = true;
         } catch (ParseException e) {
             System.err.println("Error: " + e.getMessage());
             printHelp(options);
+        } catch (NoSuchFileException e) {
+            System.err.println("No such file: " + e.getMessage());
         } catch (Exception e) {
-            System.err.println("Unknown Error: " + e.getMessage());
+            System.err.println(
+                "Unknown Error (" + e.getClass() + "): " + e.getMessage()
+            );
         } finally {
             if (!complete) {
                 System.exit(1);
