@@ -1,12 +1,18 @@
 package ar.edu.itba.steganography;
 
 import ar.edu.itba.steganography.exceptions.SecretTooLargeException;
-import ar.edu.itba.utils.*;
-import java.awt.Color;
+import ar.edu.itba.utils.ImageUtils;
+
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 
-public class LSB1Codec implements StegoCodec {
+public class LSB4Codec implements StegoCodec {
+
+    private static final byte PIXEL_MASK = (byte) 0xF0;
+    private static final byte DATA_MASK = (byte) 0x0F;
+    private static final short BYTE_CAPACITY = 2;
+    private static final short SHIFT_FACTOR = 4;
 
     public BufferedImage encode(byte[] secret, BufferedImage coverImage)
         throws SecretTooLargeException {
@@ -18,8 +24,8 @@ public class LSB1Codec implements StegoCodec {
         int[] rgb = new int[3]; // RGB values: 0 = B, 1 = G, 2 = R
 
         for (byte s : secret) {
-            for (int i = 7; i >= 0; i--) {
-                rgb[c++] = (s >>> i) & 1;
+            for (int i = BYTE_CAPACITY-1; i >= 0; i--) {
+                rgb[c++] = s >>> (SHIFT_FACTOR * i) & DATA_MASK;
 
                 if (c < 3) {
                     continue;
@@ -27,15 +33,15 @@ public class LSB1Codec implements StegoCodec {
                 c = 0;
                 if (y >= coverImage.getHeight()) {
                     throw new SecretTooLargeException(
-                            coverImage.getWidth() * coverImage.getHeight() * 3L / 8,
-                            secret.length
+                        coverImage.getWidth() * coverImage.getHeight() * 3L / BYTE_CAPACITY,
+                        secret.length
                     );
                 }
                 Color pixel = new Color(coverImage.getRGB(x, y));
 
-                int b = (pixel.getBlue() & 0xFE) | rgb[0];
-                int g = (pixel.getGreen() & 0xFE) | rgb[1];
-                int r = (pixel.getRed() & 0xFE) | rgb[2];
+                int b = (pixel.getBlue() & PIXEL_MASK) | rgb[0];
+                int g = (pixel.getGreen() & PIXEL_MASK) | rgb[1];
+                int r = (pixel.getRed() & PIXEL_MASK) | rgb[2];
 
                 stegoImage.setRGB(x, y, new Color(r, g, b).getRGB());
 
@@ -50,7 +56,7 @@ public class LSB1Codec implements StegoCodec {
             // Write the remaining bits
             if (y > coverImage.getHeight()) {
                 throw new SecretTooLargeException(
-                        coverImage.getWidth() * coverImage.getHeight() * 3L / 8,
+                        coverImage.getWidth() * coverImage.getHeight() * 3L / BYTE_CAPACITY,
                         secret.length
                 );
             }
@@ -60,11 +66,11 @@ public class LSB1Codec implements StegoCodec {
             int r = pixel.getRed();
             switch (c) {
                 case 1:
-                    b = (b & 0xFE) | rgb[0];
+                    b = (b & PIXEL_MASK) | rgb[0];
                     break;
                 case 2:
-                    b = (b & 0xFE) | rgb[0];
-                    g = (g & 0xFE) | rgb[1];
+                    b = (b & PIXEL_MASK) | rgb[0];
+                    g = (g & PIXEL_MASK) | rgb[1];
                     break;
             }
             stegoImage.setRGB(x, y, new Color(r, g, b).getRGB());
@@ -76,7 +82,7 @@ public class LSB1Codec implements StegoCodec {
     public byte[] decode(BufferedImage stegoImage) {
         var secret = new ArrayList<Byte>(256);
         short v = 0;
-        int[] values = new int[8];
+        int[] halves = new int[BYTE_CAPACITY];
         var imageBytes = stegoImage.getRGB(
             0,
             0,
@@ -89,18 +95,18 @@ public class LSB1Codec implements StegoCodec {
         for (var b : imageBytes) {
             var color = new Color(b);
             for (int c = 0; c < 3; c++) {
-                values[v++] = switch (c) {
-                    case 0 -> color.getBlue() & 1;
-                    case 1 -> color.getGreen() & 1;
-                    case 2 -> color.getRed() & 1;
+                halves[v++] = switch (c) {
+                    case 0 -> color.getBlue() & DATA_MASK;
+                    case 1 -> color.getGreen() & DATA_MASK;
+                    case 2 -> color.getRed() & DATA_MASK;
                     default -> throw new IllegalStateException(
                         "Unexpected value: " + c
                     );
                 };
-                if (v == 8) {
+                if (v == BYTE_CAPACITY) {
                     byte s = 0;
-                    for (int i = 0; i < 8; i++) {
-                        s |= (byte) (values[i] << (7 - i));
+                    for (int i = 0; i < BYTE_CAPACITY; i++) {
+                        s |= (byte) (halves[i] << (4 - SHIFT_FACTOR * i));
                     }
                     secret.add(s);
                     v = 0;

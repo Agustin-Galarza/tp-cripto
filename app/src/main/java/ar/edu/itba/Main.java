@@ -126,9 +126,9 @@ public class Main {
 
             var codec = new FileCodec(
                 switch (config.steg()) {
-                    case SteganographyAlgorithmType.LSB1 -> new LSB1Codec();
-                    case SteganographyAlgorithmType.LSB4,
-                        SteganographyAlgorithmType.LSBI -> throw new Exception(
+                    case SteganographyAlgorithmType.LSB1 -> new LSBNCodec(1);
+                    case SteganographyAlgorithmType.LSB4 -> new LSBNCodec(4);
+                    case SteganographyAlgorithmType.LSBI -> throw new Exception(
                         "Not implemented"
                     );
                 },
