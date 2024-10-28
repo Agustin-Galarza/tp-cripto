@@ -28,6 +28,7 @@ public class LSBNCodec implements StegoCodec {
         this.dataMask = (byte) (0xFF >>> (8-n));
     }
 
+    @Override
     public BufferedImage encode(byte[] secret, BufferedImage coverImage)
         throws SecretTooLargeException {
         var stegoImage = ImageUtils.deepCopy(coverImage);
@@ -93,10 +94,11 @@ public class LSBNCodec implements StegoCodec {
         return stegoImage;
     }
 
+    @Override
     public byte[] decode(BufferedImage stegoImage) {
         var secret = new ArrayList<Byte>(256);
         short v = 0;
-        int[] halves = new int[imageByteRatio];
+        int[] values = new int[imageByteRatio];
         var imageBytes = stegoImage.getRGB(
             0,
             0,
@@ -109,7 +111,7 @@ public class LSBNCodec implements StegoCodec {
         for (var b : imageBytes) {
             var color = new Color(b);
             for (int c = 0; c < 3; c++) {
-                halves[v++] = switch (c) {
+                values[v++] = switch (c) {
                     case 0 -> color.getBlue() & dataMask;
                     case 1 -> color.getGreen() & dataMask;
                     case 2 -> color.getRed() & dataMask;
@@ -120,7 +122,7 @@ public class LSBNCodec implements StegoCodec {
                 if (v == imageByteRatio) {
                     byte s = 0;
                     for (int i = 0; i < imageByteRatio; i++) {
-                        s |= (byte) (halves[i] << (8 - n - n * i));
+                        s |= (byte) (values[i] << (8 - n - n * i));
                     }
                     secret.add(s);
                     v = 0;

@@ -128,9 +128,7 @@ public class Main {
                 switch (config.steg()) {
                     case SteganographyAlgorithmType.LSB1 -> new LSBNCodec(1);
                     case SteganographyAlgorithmType.LSB4 -> new LSBNCodec(4);
-                    case SteganographyAlgorithmType.LSBI -> throw new Exception(
-                        "Not implemented"
-                    );
+                    case SteganographyAlgorithmType.LSBI -> new LSBICodec();
                 },
                 switch (config.enc()) {
                     case EncryptionAlgorithmType.PLAIN_TEXT -> null;
