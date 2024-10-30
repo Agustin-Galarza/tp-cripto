@@ -55,7 +55,7 @@ public record ProgramConfig(
         var coverImage = new File(cmd.getOptionValue("p"));
 
         if (!coverImage.exists() || !coverImage.isFile()) {
-            throw new ParseException("Cover image file does not exist");
+            throw new ParseException("Cover image file %s does not exist".formatted(coverImage));
         }
         if (!coverImage.canRead()) {
             throw new ParseException("Cover image file is not readable");
