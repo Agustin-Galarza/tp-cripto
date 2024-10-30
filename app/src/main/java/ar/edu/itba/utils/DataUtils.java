@@ -109,6 +109,7 @@ public final class DataUtils {
             );
         }
 
+        System.err.println("%02X %02X %02X %02X".formatted(bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]));
         return (
             (bytes[offset] << 24) |
             ((bytes[offset + 1] & 0xFF) << 16) |

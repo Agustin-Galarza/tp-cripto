@@ -135,7 +135,7 @@ public class Main {
                     case EncryptionAlgorithmType.AES128,
                         EncryptionAlgorithmType.AES192,
                         EncryptionAlgorithmType.AES256,
-                        EncryptionAlgorithmType._3DES -> throw new Exception(
+                        EncryptionAlgorithmType._3DES -> throw new RuntimeException(
                         "Not Implemented"
                     );
                 }
@@ -155,12 +155,13 @@ public class Main {
         } catch (ParseException e) {
             System.err.println("Error: " + e.getMessage());
             printHelp(options);
-        } catch (NoSuchFileException e) {
-            System.err.println("No such file: " + e.getMessage());
+        //} catch (NoSuchFileException e) {
+            //System.err.println("No such file: " + e.getMessage());
         } catch (Exception e) {
-            System.err.println(
-                "Unknown Error (" + e.getClass() + "): " + e.getMessage()
-            );
+            //System.err.println(
+                //"Unknown Error (" + e.getClass() + "): " + e.getMessage()
+            //);
+            e.printStackTrace();
         } finally {
             if (!complete) {
                 System.exit(1);
