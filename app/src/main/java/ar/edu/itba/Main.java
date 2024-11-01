@@ -1,6 +1,8 @@
 package ar.edu.itba;
 
 import ar.edu.itba.config.*;
+import ar.edu.itba.encryption.AESEncryption;
+import ar.edu.itba.encryption.TripleDESEncryption;
 import ar.edu.itba.steganography.*;
 import ar.edu.itba.utils.*;
 import java.awt.image.BufferedImage;
@@ -132,12 +134,10 @@ public class Main {
                 },
                 switch (config.enc()) {
                     case EncryptionAlgorithmType.PLAIN_TEXT -> null;
-                    case EncryptionAlgorithmType.AES128,
-                        EncryptionAlgorithmType.AES192,
-                        EncryptionAlgorithmType.AES256,
-                        EncryptionAlgorithmType._3DES -> throw new Exception(
-                        "Not Implemented"
-                    );
+                    case EncryptionAlgorithmType.AES128 -> new AESEncryption(128);
+                    case EncryptionAlgorithmType.AES192 -> new AESEncryption(192);
+                    case EncryptionAlgorithmType.AES256 -> new AESEncryption(256);
+                    case EncryptionAlgorithmType._3DES -> new TripleDESEncryption();
                 }
             );
 
@@ -155,8 +155,8 @@ public class Main {
         } catch (ParseException e) {
             System.err.println("Error: " + e.getMessage());
             printHelp(options);
-        } catch (NoSuchFileException e) {
-            System.err.println("No such file: " + e.getMessage());
+//        } catch (NoSuchFileException e) {
+//            System.err.println("No such file: " + e.getMessage());
         } catch (Exception e) {
             System.err.println(
                 "Unknown Error (" + e.getClass() + "): " + e.getMessage()

@@ -9,7 +9,6 @@ plugins {
 }
 
 repositories {
-    // Use Maven Central for resolving dependencies.
     mavenCentral()
 }
 
@@ -17,10 +16,12 @@ ext {
     cliCommonsVersion = '1.4'
 }
 
+var junitJupiterVersion = '5.9.2'
+
 dependencies {
-    // This dependency is used by the application.
     implementation libs.guava
     implementation "commons-cli:commons-cli:$cliCommonsVersion"
+    testImplementation "org.junit.jupiter:junit-jupiter:$junitJupiterVersion"
 }
 
 testing {
