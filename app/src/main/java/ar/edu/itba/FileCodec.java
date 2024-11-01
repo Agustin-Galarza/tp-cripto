@@ -53,8 +53,12 @@ public class FileCodec {
                 message,
                 coverImageBuffer
             );
-            ImageIO.write(secretImage, "bmp", output);
-            System.out.println(
+            if (!ImageIO.write(secretImage, "bmp", output)) {
+                System.err.println("No codec found to write bmp image");
+                System.err.println("Supported writers: %s".formatted(String.join(", ", ImageIO.getWriterFormatNames())));
+                return;
+            }
+            System.err.println(
                 "Secret message encoded successfully as " + output.getName()
             );
         } catch (IOException e) {

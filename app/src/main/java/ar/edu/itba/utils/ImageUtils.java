@@ -15,7 +15,7 @@ public final class ImageUtils {
         BufferedImage copy = new BufferedImage(
             original.getWidth(),
             original.getHeight(),
-            original.getType()
+            BufferedImage.TYPE_3BYTE_BGR
         );
 
         Graphics2D g2d = copy.createGraphics();

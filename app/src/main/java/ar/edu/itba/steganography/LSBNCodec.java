@@ -108,24 +108,29 @@ public class LSBNCodec implements StegoCodec {
             0,
             stegoImage.getWidth()
         );
-        for (var b : imageBytes) {
-            var color = new Color(b);
-            for (int c = 0; c < 3; c++) {
-                values[v++] = switch (c) {
-                    case 0 -> color.getBlue() & dataMask;
-                    case 1 -> color.getGreen() & dataMask;
-                    case 2 -> color.getRed() & dataMask;
-                    default -> throw new IllegalStateException(
-                        "Unexpected value: " + c
-                    );
-                };
-                if (v == imageByteRatio) {
-                    byte s = 0;
-                    for (int i = 0; i < imageByteRatio; i++) {
-                        s |= (byte) (values[i] << (8 - n - n * i));
+        for (var y = stegoImage.getHeight() - 1; y >= 0; y--) {
+            for (var x = 0; x < stegoImage.getWidth(); x++) {
+
+                var index = y * stegoImage.getWidth() + x;
+                var b = imageBytes[index];
+                var color = new Color(b);
+                for (int c = 0; c < 3; c++) {
+                    values[v++] = switch (c) {
+                        case 0 -> color.getBlue() & dataMask;
+                        case 1 -> color.getGreen() & dataMask;
+                        case 2 -> color.getRed() & dataMask;
+                        default -> throw new IllegalStateException(
+                            "Unexpected value: " + c
+                        );
+                    };
+                    if (v == imageByteRatio) {
+                        byte s = 0;
+                        for (int i = 0; i < imageByteRatio; i++) {
+                            s |= (byte) (values[i] << (8 - n - n * i));
+                        }
+                        secret.add(s);
+                        v = 0;
                     }
-                    secret.add(s);
-                    v = 0;
                 }
             }
         }
