@@ -25,7 +25,7 @@ public class FileCodec {
         return encryptionAlgorithm != null;
     }
 
-    public void encode(File input, File coverImage, File output) {
+    public void encode(File input, File coverImage, File output, String password) {
         String inputExtension = input
             .getName()
             .substring(input.getName().lastIndexOf('.'));
@@ -44,7 +44,7 @@ public class FileCodec {
         );
 
         if (requiresEncryption()) {
-            throw new UnsupportedOperationException("Encryption not supported");
+            var encryptedBytes = encryptionAlgorithm.encrypt(message, password);
         }
 
         try {
@@ -70,7 +70,7 @@ public class FileCodec {
         }
     }
 
-    public void decode(File input, File output) {
+    public void decode(File input, File output, String password) {
         try {
             var secretImage = ImageIO.read(input);
             var message = steganographyAlgorithm.decode(secretImage);

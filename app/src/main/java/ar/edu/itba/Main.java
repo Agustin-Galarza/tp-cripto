@@ -1,16 +1,9 @@
 package ar.edu.itba;
 
 import ar.edu.itba.config.*;
-import ar.edu.itba.encryption.AESEncryption;
+import ar.edu.itba.encryption.EncryptionCodec;
 import ar.edu.itba.encryption.TripleDESEncryption;
 import ar.edu.itba.steganography.*;
-import ar.edu.itba.utils.*;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.util.*;
-import javax.imageio.ImageIO;
 import org.apache.commons.cli.*;
 
 public class Main {
@@ -113,7 +106,6 @@ public class Main {
                     "Encryption password. This argument is required if an encryption algorithm is specified"
                 )
             );
-            // TODO: Add extraction arguments
 
             var parser = new DefaultParser();
             var cmd = parser.parse(options, args);
@@ -123,7 +115,6 @@ public class Main {
                 System.exit(0);
             }
 
-            System.out.println("Parsing");
             var config = ProgramConfig.fromParsed(cmd);
 
             var codec = new FileCodec(
@@ -132,23 +123,20 @@ public class Main {
                     case SteganographyAlgorithmType.LSB4 -> new LSBNCodec(4);
                     case SteganographyAlgorithmType.LSBI -> new LSBICodec();
                 },
-                switch (config.enc()) {
-                    case EncryptionAlgorithmType.PLAIN_TEXT -> null;
-                    case EncryptionAlgorithmType.AES128 -> new AESEncryption(128);
-                    case EncryptionAlgorithmType.AES192 -> new AESEncryption(192);
-                    case EncryptionAlgorithmType.AES256 -> new AESEncryption(256);
-                    case EncryptionAlgorithmType._3DES -> new TripleDESEncryption();
-                }
+                config.enc().equals(EncryptionAlgorithmType.PLAIN_TEXT) ?
+                    null :
+                    new EncryptionCodec(config.enc(), config.mode())
             );
 
             if (config.embed()) {
                 codec.encode(
                     config.secretMessage(),
                     config.coverImage(),
-                    config.stegoImage()
+                    config.stegoImage(),
+                    config.password()
                 );
             } else {
-                codec.decode(config.coverImage(), config.stegoImage());
+                codec.decode(config.coverImage(), config.stegoImage(), config.password());
             }
 
             complete = true;
