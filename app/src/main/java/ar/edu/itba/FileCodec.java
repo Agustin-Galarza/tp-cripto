@@ -6,6 +6,7 @@ import ar.edu.itba.steganography.exceptions.*;
 import ar.edu.itba.utils.*;
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import javax.imageio.ImageIO;
 
 public class FileCodec {
@@ -45,6 +46,10 @@ public class FileCodec {
 
         if (requiresEncryption()) {
             var encryptedBytes = encryptionAlgorithm.encrypt(message, password);
+
+            message = new byte[4 + encryptedBytes.length];
+            DataUtils.intToBytes(encryptedBytes.length, message, 0);
+            System.arraycopy(encryptedBytes, 0, message, 4, encryptedBytes.length);
         }
 
         try {
@@ -75,6 +80,17 @@ public class FileCodec {
             var secretImage = ImageIO.read(input);
             var message = steganographyAlgorithm.decode(secretImage);
             var messageLength = DataUtils.bytesToInt(message, 0);
+
+            if(requiresEncryption()) {
+                var decryptedBytes = encryptionAlgorithm.decrypt(
+                  Arrays.copyOfRange(message, 4, 4 + messageLength),
+                  password
+                );
+
+                messageLength = DataUtils.bytesToInt(decryptedBytes, 0);
+                message = decryptedBytes;
+            }
+
             if (message[messageLength + 4] != (byte) '.') {
                 throw new IllegalArgumentException("Invalid message format");
             }

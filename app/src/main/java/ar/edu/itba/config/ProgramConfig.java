@@ -2,21 +2,22 @@ package ar.edu.itba.config;
 
 import java.io.File;
 import java.util.Arrays;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.ParseException;
 
 public record ProgramConfig(
-    File secretMessage,
-    File stegoImage, // TODO: rename to output file
-    File coverImage,
-    boolean embed,
-    SteganographyAlgorithmType steg,
-    EncryptionAlgorithmType enc,
-    EncryptionMode mode,
-    String password
+  File secretMessage,
+  File stegoImage, // TODO: rename to output file
+  File coverImage,
+  boolean embed,
+  SteganographyAlgorithmType steg,
+  EncryptionAlgorithmType enc,
+  EncryptionMode mode,
+  String password
 ) {
     public static ProgramConfig fromParsed(CommandLine cmd)
-        throws ParseException {
+      throws ParseException {
         // Manually check for required options
         for (String opt : Arrays.asList("p", "out", "steg")) {
             if (!cmd.hasOption(opt)) {
@@ -26,12 +27,12 @@ public record ProgramConfig(
 
         if (!cmd.hasOption("embed") && !cmd.hasOption("extract")) {
             throw new ParseException(
-                "Missing required option: embed or extract"
+              "Missing required option: embed or extract"
             );
         }
         if (cmd.hasOption("embed") && cmd.hasOption("extract")) {
             throw new ParseException(
-                "Cannot specify both embed and extract options"
+              "Cannot specify both embed and extract options"
             );
         }
 
@@ -82,25 +83,32 @@ public record ProgramConfig(
         if (cmd.hasOption("a") || cmd.hasOption("m")) {
             if (!cmd.hasOption("pass")) {
                 throw new ParseException(
-                    "Password is required when using encryption"
+                  "Password is required when using encryption"
                 );
             }
             encAlgorithm = cmd.hasOption("a")
-                ? EncryptionAlgorithmType.valueOf(cmd.getOptionValue("a"))
-                : EncryptionAlgorithmType.AES128;
+                             ? switch (cmd.getOptionValue("a").toLowerCase()) {
+                case "aes128" -> EncryptionAlgorithmType.AES128;
+                case "aes192" -> EncryptionAlgorithmType.AES192;
+                case "aes256" -> EncryptionAlgorithmType.AES256;
+                case "3des" -> EncryptionAlgorithmType._3DES;
+                default ->
+                  throw new RuntimeException(String.format("Encryption algorithm %s not recognized", cmd.getOptionValue("a")));
+            }
+                             : EncryptionAlgorithmType.AES128;
             if (cmd.hasOption("m")) {
-                encMode = EncryptionMode.valueOf(cmd.getOptionValue("m"));
+                encMode = EncryptionMode.valueOf(cmd.getOptionValue("m").toUpperCase());
             }
         }
         return new ProgramConfig(
-            secretMessage,
-            stegoImage,
-            coverImage,
-            embedding,
-            SteganographyAlgorithmType.valueOf(cmd.getOptionValue("steg")),
-            encAlgorithm,
-            encMode,
-            cmd.getOptionValue("pass")
+          secretMessage,
+          stegoImage,
+          coverImage,
+          embedding,
+          SteganographyAlgorithmType.valueOf(cmd.getOptionValue("steg")),
+          encAlgorithm,
+          encMode,
+          cmd.getOptionValue("pass")
         );
     }
 }
