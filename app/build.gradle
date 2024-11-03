@@ -17,17 +17,19 @@ ext {
 }
 
 var junitJupiterVersion = '5.9.2'
+var dotenvVersion = '5.2.2'
 
 dependencies {
     implementation libs.guava
     implementation "commons-cli:commons-cli:$cliCommonsVersion"
     testImplementation "org.junit.jupiter:junit-jupiter:$junitJupiterVersion"
+    implementation "io.github.cdimascio:java-dotenv:$dotenvVersion"
 }
 
 testing {
     suites {
         test {
-            useJUnitJupiter('5.10.3')
+            useJUnitJupiter(junitJupiterVersion)
         }
     }
 }
