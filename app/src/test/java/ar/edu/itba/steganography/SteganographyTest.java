@@ -36,12 +36,22 @@ public class SteganographyTest {
         return Path.of(resource.getPath());
     }
 
-    private File getOutputFile(String filename) {
+    private File getOutputFile(String filename) throws IOException {
         var resource = getClass().getResource(TEST_RESULTS_BASE_PATH);
         if(resource == null) {
             throw new RuntimeException("Could not find resource directory " + TEST_RESULTS_BASE_PATH);
         }
-        return new File(resource.getPath() + "/" + filename);
+        var file = new File(resource.getPath() + "/" + filename);
+        var isCreated = file.createNewFile();
+        if(!isCreated) {
+            throw new RuntimeException("Could not create file " + file.getAbsolutePath());
+        }
+        var isWriteable = file.setWritable(true);
+        if(!isWriteable) {
+            throw new RuntimeException("Could not make file " + file.getAbsolutePath() + " writeable.");
+        }
+
+        return file;
     }
 
     private void callCodec(ProgramConfig config) {
@@ -115,6 +125,38 @@ public class SteganographyTest {
             }
         } catch (IOException e) {
             fail("Could not find image directory " + getImagesPath("final") + ": " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testExtractBasicImages() {
+        var outputFiles = new HashSet<File>();
+        try {
+            var stegoFiles = Files.list(getImagesPath("basic")).filter(Files::isRegularFile).map(Path::toFile).toList();
+
+            for (var algo : SteganographyAlgorithmType.values()) {
+                var file = stegoFiles.stream().filter(sf -> sf.getName().equals(String.format("lado%s.bmp", algo.name()))).findFirst().orElseThrow();
+
+                var outputFile = getOutputFile(String.format("output-%s-%s", file.getName().substring(0, file.getName().lastIndexOf(".")), algo));
+                outputFiles.add(outputFile);
+                System.out.printf("Testing file %s with algorithm %s%n", file.getName(), algo);
+                var config = new ProgramConfig(
+                  null,
+                  outputFile,
+                  file,
+                  false,
+                  algo,
+                  EncryptionAlgorithmType.PLAIN_TEXT,
+                  null,
+                  null
+                );
+
+                assertDoesNotThrow(() -> callCodec(config));
+            }
+        } catch (IOException e) {
+            fail("Error with files management: " + e.getMessage());
+        } finally {
+            outputFiles.stream().flatMap(f -> Stream.of(f, new File(f.getAbsolutePath() + ".png"))).forEach(File::delete);
         }
     }
 }

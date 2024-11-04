@@ -6,6 +6,7 @@ import ar.edu.itba.utils.ImageUtils;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.*;
+import java.util.List;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -76,24 +77,24 @@ public class LSBICodec implements StegoCodec {
          * pattern and will be set to 1 if the bytes with that pattern must
          * be swapped and 0 if the bytes must remain the same.
          * The order for the patterns is as follows:
-         * 11 10 01 00
+         * 00 01 10 11
          *
          * So for example, if the first four bits (each stored in a byte of the image)
-         * look like '1010', then for all subsequent bits if the image byte contains
+         * look like '0101', then for all subsequent bits if the image byte contains
          * the '11' or '01' patterns then the secret bits must be swapped in order to
          * recover the image correctly
          */
 
         // Reserve space for the pattern information
         x = (PATTERN_INFO_BIT_SIZE / BITS_PER_PIXEL) % imageWidth;
-        y = (PATTERN_INFO_BIT_SIZE / BITS_PER_PIXEL) / imageWidth; // This should be zero in most normal cases
+        y = imageHeight - 1 - (PATTERN_INFO_BIT_SIZE / BITS_PER_PIXEL) / imageWidth; // This last part should be zero in most normal cases
 
         var p = new Color(coverImage.getRGB(x, y));
 
         for (int i = 0; i < secret.length * 8; i++) {
             int bit = secretBits.get(i) ? 1 : 0;
             if (c == 0) {
-                if (y >= coverImage.getHeight()) {
+                if (y < 0) {
                     throw new SecretTooLargeException(
                             coverImage.getWidth() * coverImage.getHeight() * 3L / 8,
                             secret.length
@@ -102,7 +103,7 @@ public class LSBICodec implements StegoCodec {
                 p = new Color(coverImage.getRGB(x++, y));
                 if (x == imageWidth) {
                     x = 0;
-                    y++;
+                    y--;
                 }
             }
             var imageByte = switch (c) {
@@ -124,28 +125,22 @@ public class LSBICodec implements StegoCodec {
         }
 
         x = 0;
-        y = 0;
+        y = imageHeight - 1;
         c = 0;
 
-        // Store 11 and 10
-        p = new Color(coverImage.getRGB(x, y));
+        // Store 00, 01 and 10
         stegoImage.setRGB(x++, y, new Color(
-                p.getRed(),
-                (p.getGreen() & PIXEL_MASK) | (swappedPatterns.contains(0b10) ? 1 : 0),
-                (p.getBlue() & PIXEL_MASK) | (swappedPatterns.contains(0b11) ? 1 : 0)
+          (p.getRed() & PIXEL_MASK) | (swappedPatterns.contains(0b10) ? 1 : 0),
+          (p.getGreen() & PIXEL_MASK) | (swappedPatterns.contains(0b01) ? 1 : 0),
+          (p.getBlue() & PIXEL_MASK) | (swappedPatterns.contains(0b00) ? 1 : 0)
         ).getRGB());
         if (x == imageWidth) {
-            y++;
+            y--;
         }
-        // Store 01 and 00
-        stegoImage.setRGB(x++, y, new Color(
-                p.getRed(),
-                (p.getGreen() & PIXEL_MASK) | (swappedPatterns.contains(0b00) ? 1 : 0),
-                (p.getBlue() & PIXEL_MASK) | (swappedPatterns.contains(0b01) ? 1 : 0)
-        ).getRGB());
-        if (x == imageWidth) {
-            y++;
-        }
+        // Store 11
+        // The next channel to write is the Green channel for the current byte
+        colors[c++] = swappedPatterns.contains(0b11) ? 1 : 0;
+
         for (int i = 0; i < secret.length * 8; i++) {
             boolean sBit = secretBits.get(i);
 
@@ -169,7 +164,7 @@ public class LSBICodec implements StegoCodec {
             stegoImage.setRGB(x, y, new Color(r, g, b).getRGB());
             x++;
             if (x == imageWidth) {
-                y++;
+                y--;
             }
         }
         if (c == 1) {
@@ -189,7 +184,7 @@ public class LSBICodec implements StegoCodec {
         int[] values = new int[8];
         short v = 0;
 
-        var imageBytes = stegoImage.getRGB(
+        var imagePixels = stegoImage.getRGB(
                 0,
                 0,
                 stegoImage.getWidth(),
@@ -200,38 +195,62 @@ public class LSBICodec implements StegoCodec {
         );
 
         var swappedPatterns = new HashSet<>(4);
-        for (int i = 0; i < 4; i++) {
-            var pixel = new Color(imageBytes[i / 2]);
-            var b = i % 2 == 0 ? pixel.getBlue() : pixel.getGreen();
-            if((b & 1) == 1) {
-                swappedPatterns.add(switch (i){
-                    case 0 -> 0b11;
-                    case 1 -> 0b10;
-                    case 2 -> 0b01;
-                    case 3 -> 0b00;
-                    default -> throw new IllegalStateException("Unexpected value for iterator: " + i);
+
+        int x = 0;
+        int y = stegoImage.getHeight() - 1;
+
+        var firstPixel = new Color(imagePixels[x++ + y * stegoImage.getWidth()]);
+
+        // Read first three patterns
+        int bIndex = 0;
+        for(int b : List.of(firstPixel.getBlue(), firstPixel.getGreen(), firstPixel.getRed())) {
+            if((b & DATA_MASK) == 1) {
+                swappedPatterns.add(switch (bIndex){
+                    case 0 -> 0b00;
+                    case 1 -> 0b01;
+                    case 2 -> 0b10;
+                    default -> throw new IllegalStateException("Unexpected value for iterator: " + bIndex);
                 });
             }
+            bIndex++;
         }
-        for(int i = 2; i < imageBytes.length; i++) {
-            var pixel = new Color(imageBytes[i]);
-            for (int c = 0; c < 2; c++) {
-                var b = switch (c) {
-                    case 0 -> pixel.getBlue();
-                    case 1 -> pixel.getGreen();
-                    default -> throw new IllegalStateException(
-                            "Unexpected value: " + c
-                    );
-                };
+        // Read the last pattern
+        int secondPixelBlueChannel = (new Color(imagePixels[x + y * stegoImage.getWidth()])).getBlue();
+        if((secondPixelBlueChannel & DATA_MASK) == 1) {
+            swappedPatterns.add(0b11);
+        }
+        boolean startOffset = true; // Since we read the first channel (blue), we have to start reading the second one in the loop (green)
 
-                values[v++] = swappedPatterns.contains(getPattern(b)) ? swapBit(b & DATA_MASK) : b & DATA_MASK;
-                if (v == 8) {
-                    byte s = 0;
-                    for (int j = 0; j < 8; j++) {
-                        s |= (byte) (values[j] << (j));
+        for(; y >= 0; y--) {
+            if(!startOffset) {
+                x = 0;
+            }
+            for (; x < stegoImage.getWidth(); x++) {
+                int index = x + y * stegoImage.getWidth();
+                var pixel = new Color(imagePixels[index]);
+                int c = 0;
+                if (startOffset) {
+                    c = 1;
+                    startOffset = false;
+                }
+                for (; c < 2; c++) {
+                    var b = switch (c) {
+                        case 0 -> pixel.getBlue();
+                        case 1 -> pixel.getGreen();
+                        default -> throw new IllegalStateException(
+                          "Unexpected value: " + c
+                        );
+                    };
+
+                    values[v++] = swappedPatterns.contains(getPattern(b)) ? swapBit(b & DATA_MASK) : b & DATA_MASK;
+                    if (v == 8) {
+                        byte s = 0;
+                        for (int j = 0; j < 8; j++) {
+                            s |= (byte) (values[j] << (j));
+                        }
+                        secret.add(s);
+                        v = 0;
                     }
-                    secret.add(s);
-                    v = 0;
                 }
             }
         }

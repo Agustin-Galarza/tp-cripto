@@ -111,11 +111,13 @@ public class FileCodec {
                     output.toPath().resolveSibling(newFilename + messageExtension).toString()
             );
             if(fullOutput.exists()) {
-                throw new RuntimeException("Destination file with decoded extension: " + fullOutput.getName() + " already exists");
+                throw new RuntimeException("Destination file with decoded extension: " + fullOutput.getAbsolutePath() + " already exists");
             }
             var renamed = output.renameTo(fullOutput);
             if(!renamed) {
-                throw new RuntimeException("File " + fullOutput.getName() + " could not be created.");
+                throw new RuntimeException("File " + fullOutput.getAbsolutePath() + " could not be created." + (output.canWrite() ?
+                                                                                                                  (fullOutput.canWrite() ? "" : " Cannot write dest file.") :
+                                                                                                                  " Cannot write source file."));
             }
 
             // var outputFile = new File(output, messageExtension.toString());

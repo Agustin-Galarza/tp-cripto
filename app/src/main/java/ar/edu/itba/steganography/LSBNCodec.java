@@ -34,7 +34,7 @@ public class LSBNCodec implements StegoCodec {
         var stegoImage = ImageUtils.deepCopy(coverImage);
 
         int x = 0;
-        int y = 0;
+        int y = coverImage.getHeight() - 1;
         short c = 0; // RGB component: 0 = B, 1 = G, 2 = R
         int[] rgb = new int[3]; // RGB values: 0 = B, 1 = G, 2 = R
 
@@ -46,7 +46,7 @@ public class LSBNCodec implements StegoCodec {
                     continue;
                 }
                 c = 0;
-                if (y >= coverImage.getHeight()) {
+                if (y < 0) {
                     throw new SecretTooLargeException(
                         coverImage.getWidth() * coverImage.getHeight() * 3L / imageByteRatio,
                         secret.length
@@ -63,13 +63,13 @@ public class LSBNCodec implements StegoCodec {
                 x++;
                 if (x % coverImage.getWidth() == 0) {
                     x = 0;
-                    y++;
+                    y--;
                 }
             }
         }
         if (c != 0) {
             // Write the remaining bits
-            if (y > coverImage.getHeight()) {
+            if (y < 0) {
                 throw new SecretTooLargeException(
                         coverImage.getWidth() * coverImage.getHeight() * 3L / imageByteRatio,
                         secret.length
