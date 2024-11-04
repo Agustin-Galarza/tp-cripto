@@ -2,8 +2,12 @@ package ar.edu.itba.utils;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOError;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 public final class DataUtils {
 
@@ -115,5 +119,23 @@ public final class DataUtils {
             ((bytes[offset + 2] & 0xFF) << 8) |
             (bytes[offset + 3] & 0xFF)
         );
+    }
+
+    public static byte[] readImage(File file) throws FileNotFoundException, IOException {
+        var stream = new FileInputStream(file);
+        var reader = ByteBuffer.wrap(stream.readNBytes(54));
+        reader.order(ByteOrder.LITTLE_ENDIAN);
+        reader.getShort();
+        var length = reader.getInt();
+        System.err.println("length: %d".formatted(length));
+        reader.getShort();
+        reader.getShort();
+        var offset = reader.getInt();
+        System.err.println("offset: %d".formatted(length));
+        stream.skipNBytes(offset - 54);
+        var data = stream.readNBytes(length);
+        stream.close();
+
+        return data;
     }
 }

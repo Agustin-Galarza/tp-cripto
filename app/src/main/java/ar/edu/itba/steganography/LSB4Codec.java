@@ -79,19 +79,10 @@ public class LSB4Codec implements StegoCodec {
         return stegoImage;
     }
 
-    public byte[] decode(BufferedImage stegoImage) {
+    public byte[] decode(byte[] imageBytes) {
         var secret = new ArrayList<Byte>(256);
         short v = 0;
         int[] halves = new int[BYTE_CAPACITY];
-        var imageBytes = stegoImage.getRGB(
-            0,
-            0,
-            stegoImage.getWidth(),
-            stegoImage.getHeight(),
-            null,
-            0,
-            stegoImage.getWidth()
-        );
         for (var b : imageBytes) {
             var color = new Color(b);
             for (int c = 0; c < 3; c++) {

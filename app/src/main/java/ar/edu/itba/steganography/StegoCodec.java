@@ -20,5 +20,5 @@ public interface StegoCodec {
      * @param stegoImage The stego image to decode the secret message from.
      * @return The secret message decoded from the stego image.
      */
-    byte[] decode(BufferedImage stegoImage);
+    byte[] decode(byte[] stegoImage);
 }

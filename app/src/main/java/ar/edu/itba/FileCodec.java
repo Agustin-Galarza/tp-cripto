@@ -76,7 +76,7 @@ public class FileCodec {
 
     public void decode(File input, File output, String password) {
         try {
-            var secretImage = ImageIO.read(input);
+            var secretImage = DataUtils.readImage(input);
             var message = steganographyAlgorithm.decode(secretImage);
             var messageLength = DataUtils.bytesToInt(message, 0);
             System.out.println("Message length: " + messageLength);
