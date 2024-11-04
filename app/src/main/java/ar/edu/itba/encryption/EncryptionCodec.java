@@ -132,7 +132,7 @@ public class EncryptionCodec implements EncryptionAlgorithm {
     }
 
     public static String buildTransformation(String algorithm, EncryptionMode mode) {
-        if (mode.equals(EncryptionMode.OFB) || mode.equals(EncryptionMode.CFB) || mode.equals(EncryptionMode.CFB8)) {
+        if (mode.equals(EncryptionMode.OFB) || mode.equals(EncryptionMode.CFB)) {
             return algorithm + "/" + mode.value() + "/NoPadding"; // OFB and CFB modes do not use padding
         }
         return algorithm + "/" + mode.value() + "/" + DEFAULT_PADDING.value();

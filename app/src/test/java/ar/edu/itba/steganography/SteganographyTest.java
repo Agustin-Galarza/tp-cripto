@@ -42,6 +42,9 @@ public class SteganographyTest {
             throw new RuntimeException("Could not find resource directory " + TEST_RESULTS_BASE_PATH);
         }
         var file = new File(resource.getPath() + "/" + filename);
+        if(file.exists()) {
+            return file;
+        }
         var isCreated = file.createNewFile();
         if(!isCreated) {
             throw new RuntimeException("Could not create file " + file.getAbsolutePath());

@@ -3,8 +3,7 @@ package ar.edu.itba.config;
 public enum EncryptionMode {
     ECB("ECB"),
     CBC("CBC"),
-    CFB("CFB"),
-    CFB8("CFB8"),
+    CFB("CFB8"),
     OFB("OFB");
 
     private final String mode;

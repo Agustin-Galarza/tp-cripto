@@ -43,7 +43,6 @@ public class FileCodec {
             message,
             4 + (int) input.length()
         );
-
         if (requiresEncryption()) {
             var encryptedBytes = encryptionAlgorithm.encrypt(message, password);
 
@@ -80,6 +79,7 @@ public class FileCodec {
             var secretImage = ImageIO.read(input);
             var message = steganographyAlgorithm.decode(secretImage);
             var messageLength = DataUtils.bytesToInt(message, 0);
+            System.out.println("Message length: " + messageLength);
 
             if(requiresEncryption()) {
                 var decryptedBytes = encryptionAlgorithm.decrypt(
@@ -89,8 +89,10 @@ public class FileCodec {
 
                 messageLength = DataUtils.bytesToInt(decryptedBytes, 0);
                 message = decryptedBytes;
+                System.out.println("True message length: " + messageLength);
             }
 
+            DataUtils.bytesToFile(message, 4, messageLength, output);
             if (message[messageLength + 4] != (byte) '.') {
                 throw new IllegalArgumentException("Invalid message format");
             }
