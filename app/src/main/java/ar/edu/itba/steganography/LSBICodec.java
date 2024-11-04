@@ -63,11 +63,10 @@ public class LSBICodec implements StegoCodec {
         var stegoImage = ImageUtils.deepCopy(coverImage);
         var secretBits = BitSet.valueOf(secret);
         final Map<Integer, PatternCount> patternMap = Map.of(
-                0b11, new PatternCount(),
-                0b10, new PatternCount(),
-                0b01, new PatternCount(),
-                0b00, new PatternCount()
-        );
+          0b11, new PatternCount(),
+          0b10, new PatternCount(),
+          0b01, new PatternCount(),
+          0b00, new PatternCount());
         int c = 0, x, y;
         int[] colors = new int[BITS_PER_PIXEL]; // Use only Blue(0) and Green(1)
 
@@ -85,20 +84,20 @@ public class LSBICodec implements StegoCodec {
          * recover the image correctly
          */
 
-        // Reserve space for the pattern information
-        x = (PATTERN_INFO_BIT_SIZE / BITS_PER_PIXEL) % imageWidth;
-        y = imageHeight - 1 - (PATTERN_INFO_BIT_SIZE / BITS_PER_PIXEL) / imageWidth; // This last part should be zero in most normal cases
+        // Reserve space for the pattern information (4 bytes)
+        x = 1;
+        y = imageHeight - 1;
+        c = 1;
 
-        var p = new Color(coverImage.getRGB(x, y));
+        var p = new Color(coverImage.getRGB(x++, y));
 
         for (int i = 0; i < secret.length * 8; i++) {
-            int bit = secretBits.get(i) ? 1 : 0;
+            int bit = secretBits.get(7 - i % 8 + ((int) i / 8) * 8) ? 1 : 0;
             if (c == 0) {
                 if (y < 0) {
                     throw new SecretTooLargeException(
-                            coverImage.getWidth() * coverImage.getHeight() * 3L / 8,
-                            secret.length
-                    );
+                      coverImage.getWidth() * coverImage.getHeight() * 3L / 8,
+                      secret.length);
                 }
                 p = new Color(coverImage.getRGB(x++, y));
                 if (x == imageWidth) {
@@ -112,7 +111,7 @@ public class LSBICodec implements StegoCodec {
                 default -> throw new IllegalStateException("Unexpected value: " + c);
             };
             patternMap.get(getPattern(imageByte))
-                    .count((imageByte & 1) != bit);
+              .count((imageByte & 1) != bit);
             c = (c + 1) % BITS_PER_PIXEL;
         }
 
@@ -136,13 +135,19 @@ public class LSBICodec implements StegoCodec {
         ).getRGB());
         if (x == imageWidth) {
             y--;
+            x = 0;
         }
         // Store 11
         // The next channel to write is the Green channel for the current byte
-        colors[c++] = swappedPatterns.contains(0b11) ? 1 : 0;
+        colors[c] = swappedPatterns.contains(0b11) ? 1 : 0;
+        // compensate for the bit swap that may occur when writing this bit
+        if(swappedPatterns.contains(getPattern((new Color(stegoImage.getRGB(x, y))).getBlue()))) {
+            colors[c] = swapBit(colors[c]);
+        }
+        c++;
 
         for (int i = 0; i < secret.length * 8; i++) {
-            boolean sBit = secretBits.get(i);
+            boolean sBit = secretBits.get(7 - i % 8 + ((int) i / 8) * 8);
 
             colors[c++] = sBit ? 1 : 0;
 
@@ -157,20 +162,21 @@ public class LSBICodec implements StegoCodec {
 
             var r = pixel.getRed();
             var b = (pixel.getBlue() & PIXEL_MASK) |
-                    (swappedPatterns.contains(bluePattern) ? swapBit(colors[0]) : colors[0]);
+                      (swappedPatterns.contains(bluePattern) ? swapBit(colors[0]) : colors[0]);
             var g = (pixel.getGreen() & PIXEL_MASK) |
-                    (swappedPatterns.contains(greenPattern) ? swapBit(colors[1]) : colors[1]);
+                      (swappedPatterns.contains(greenPattern) ? swapBit(colors[1]) : colors[1]);
 
             stegoImage.setRGB(x, y, new Color(r, g, b).getRGB());
             x++;
             if (x == imageWidth) {
                 y--;
+                x = 0;
             }
         }
         if (c == 1) {
             var pixel = new Color(coverImage.getRGB(x, y));
             var b = (pixel.getBlue() & PIXEL_MASK) |
-                    (swappedPatterns.contains(getPattern(pixel.getBlue())) ? swapBit(colors[0]) : colors[0]);
+                      (swappedPatterns.contains(getPattern(pixel.getBlue())) ? swapBit(colors[0]) : colors[0]);
 
             stegoImage.setRGB(x, y, new Color(pixel.getRed(), pixel.getGreen(), b).getRGB());
         }
@@ -185,13 +191,13 @@ public class LSBICodec implements StegoCodec {
         short v = 0;
 
         var imagePixels = stegoImage.getRGB(
-                0,
-                0,
-                stegoImage.getWidth(),
-                stegoImage.getHeight(),
-                null,
-                0,
-                stegoImage.getWidth()
+          0,
+          0,
+          stegoImage.getWidth(),
+          stegoImage.getHeight(),
+          null,
+          0,
+          stegoImage.getWidth()
         );
 
         var swappedPatterns = new HashSet<>(4);
@@ -203,9 +209,9 @@ public class LSBICodec implements StegoCodec {
 
         // Read first three patterns
         int bIndex = 0;
-        for(int b : List.of(firstPixel.getBlue(), firstPixel.getGreen(), firstPixel.getRed())) {
-            if((b & DATA_MASK) == 1) {
-                swappedPatterns.add(switch (bIndex){
+        for (int b : List.of(firstPixel.getBlue(), firstPixel.getGreen(), firstPixel.getRed())) {
+            if ((b & DATA_MASK) == 1) {
+                swappedPatterns.add(switch (bIndex) {
                     case 0 -> 0b00;
                     case 1 -> 0b01;
                     case 2 -> 0b10;
@@ -216,10 +222,11 @@ public class LSBICodec implements StegoCodec {
         }
         // Read the last pattern
         int secondPixelBlueChannel = (new Color(imagePixels[x + y * stegoImage.getWidth()])).getBlue();
-        if((secondPixelBlueChannel & DATA_MASK) == 1) {
+        if ((secondPixelBlueChannel & DATA_MASK) == 1) {
             swappedPatterns.add(0b11);
         }
-        boolean startOffset = true; // Since we read the first channel (blue), we have to start reading the second one in the loop (green)
+        boolean startOffset = true; // Since we read the first channel (blue), we have to start reading the second
+        // one in the loop (green)
 
         for(; y >= 0; y--) {
             if(!startOffset) {
@@ -238,15 +245,14 @@ public class LSBICodec implements StegoCodec {
                         case 0 -> pixel.getBlue();
                         case 1 -> pixel.getGreen();
                         default -> throw new IllegalStateException(
-                          "Unexpected value: " + c
-                        );
+                          "Unexpected value: " + c);
                     };
 
                     values[v++] = swappedPatterns.contains(getPattern(b)) ? swapBit(b & DATA_MASK) : b & DATA_MASK;
                     if (v == 8) {
                         byte s = 0;
                         for (int j = 0; j < 8; j++) {
-                            s |= (byte) (values[j] << (j));
+                            s |= (byte) (values[j] << (7 - j));
                         }
                         secret.add(s);
                         v = 0;
