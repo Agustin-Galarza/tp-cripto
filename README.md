@@ -1,6 +1,6 @@
 # TPI 72.44 - Criptografía y Seguridad
 
-## Buildar ejecutable
+## Buildear ejecutable
 
 ### Usando **GraalVM**
 
