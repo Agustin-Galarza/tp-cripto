@@ -12,6 +12,7 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
+import java.util.Arrays;
 
 import ar.edu.itba.utils.EnvUtils;
 
@@ -58,16 +59,16 @@ public class EncryptionCodec implements EncryptionAlgorithm {
         try {
             byte[] salt = getSalt();
 
-            var key = deriveKey(algorithmType.algorithm(), password, salt, algorithmType.keySize());
             if (encryptionMode.equals(EncryptionMode.ECB)) {
                 // ECB mode does not use IV
+                var key = deriveKey(algorithmType.algorithm(), password, salt, algorithmType.keySize());
                 cipher.init(Cipher.ENCRYPT_MODE, key);
                 return cipher.doFinal(data);
             }
-            var iv = deriveIV(password, salt, algorithmType.ivSize());
+            var parameters = deriveKeyAndIV(algorithmType.algorithm(), password, salt, algorithmType.keySize(), algorithmType.ivSize());
 
             // Encrypt the text
-            cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+            cipher.init(Cipher.ENCRYPT_MODE, parameters.key(), parameters.iv());
             return cipher.doFinal(data);
         } catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException e) {
             throw new RuntimeException("Could not initialize " + algorithmType.algorithmName() + " algorithm", e);
@@ -84,17 +85,17 @@ public class EncryptionCodec implements EncryptionAlgorithm {
     public byte[] decrypt(byte[] data, String password) {
         try {
             byte[] salt = getSalt();
-            var key = deriveKey(algorithmType.algorithm(), password, salt, algorithmType.keySize());
             if (encryptionMode.equals(EncryptionMode.ECB)) {
                 // ECB mode does not use IV
+                var key = deriveKey(algorithmType.algorithm(), password, salt, algorithmType.keySize());
 
                 cipher.init(Cipher.DECRYPT_MODE, key);
                 return cipher.doFinal(data);
             }
 
-            var iv = deriveIV(password, salt, algorithmType.ivSize());
+            var parameters = deriveKeyAndIV(algorithmType.algorithm(), password, salt, algorithmType.keySize(), algorithmType.ivSize());
 
-            cipher.init(Cipher.DECRYPT_MODE, key, iv);
+            cipher.init(Cipher.DECRYPT_MODE, parameters.key(), parameters.iv());
             return cipher.doFinal(data);
         } catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException e) {
             throw new RuntimeException("Could not initialize " + algorithmType.algorithmName() + " algorithm", e);
@@ -131,6 +132,9 @@ public class EncryptionCodec implements EncryptionAlgorithm {
     }
 
     public static String buildTransformation(String algorithm, EncryptionMode mode) {
+        if (mode.equals(EncryptionMode.OFB) || mode.equals(EncryptionMode.CFB) || mode.equals(EncryptionMode.CFB8)) {
+            return algorithm + "/" + mode.value() + "/NoPadding"; // OFB and CFB modes do not use padding
+        }
         return algorithm + "/" + mode.value() + "/" + DEFAULT_PADDING.value();
     }
 
@@ -139,8 +143,7 @@ public class EncryptionCodec implements EncryptionAlgorithm {
         if (!(algorithm.equals("AES") || algorithm.equals("DESede"))) {
             throw new IllegalArgumentException("Unsupported algorithm: " + algorithm);
         }
-        PBEKeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, ITERATION_COUNT, keySize);
-        SecretKeyFactory keyFactory = SecretKeyFactory.getInstance(SECRET_KEY_FACTORY_ALGORITHM);
+        PBEKeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, ITERATION_COUNT, keySize);        SecretKeyFactory keyFactory = SecretKeyFactory.getInstance(SECRET_KEY_FACTORY_ALGORITHM);
         try {
             byte[] keyBytes = keyFactory.generateSecret(keySpec).getEncoded();
             return new SecretKeySpec(keyBytes, algorithm);
@@ -149,12 +152,17 @@ public class EncryptionCodec implements EncryptionAlgorithm {
         }
     }
 
-    public static IvParameterSpec deriveIV(String password, byte[] salt, int ivSize) throws NoSuchAlgorithmException {
-        PBEKeySpec ivSpec = new PBEKeySpec(password.toCharArray(), salt, ITERATION_COUNT, ivSize * 8);
+    public record DerivedParameters(SecretKeySpec key, IvParameterSpec iv) {}
+
+    public static DerivedParameters deriveKeyAndIV(String algorithm, String password, byte[] salt, int keySize, int ivSize) throws NoSuchAlgorithmException {
+        PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), salt, ITERATION_COUNT, keySize + ivSize * 8);
         SecretKeyFactory keyFactory = SecretKeyFactory.getInstance(SECRET_KEY_FACTORY_ALGORITHM);
         try {
-            byte[] ivBytes = keyFactory.generateSecret(ivSpec).getEncoded();
-            return new IvParameterSpec(ivBytes);
+            var generatedBytes = keyFactory.generateSecret(spec).getEncoded();
+            return new DerivedParameters(
+              new SecretKeySpec(Arrays.copyOfRange(generatedBytes, 0, keySize / 8), algorithm),
+              new IvParameterSpec(Arrays.copyOfRange(generatedBytes, keySize / 8, keySize / 8 + ivSize))
+            );
         } catch (InvalidKeySpecException e) {
             throw new IllegalArgumentException("Invalid key spec", e);
         }
