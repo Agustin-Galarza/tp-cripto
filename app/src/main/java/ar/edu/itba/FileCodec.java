@@ -105,7 +105,7 @@ public class FileCodec {
                 ? output.getName()
                 : output
                     .getName()
-                    .substring(0, output.getName().lastIndexOf('.') - 1);
+                    .substring(0, output.getName().lastIndexOf('.'));
 
             var fullOutput = new File(
                     output.toPath().resolveSibling(newFilename + messageExtension).toString()
