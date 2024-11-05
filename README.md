@@ -17,7 +17,7 @@ o usar `sdk list java` para consultar las versiones disponibles.
 Teniendo una versión de Java de GraalVM instalada, se puede correr
 
 ```sh
-./gradlew nativeImage
+./gradlew nativeCompile
 ```
 
 ### Usando **jpackage**

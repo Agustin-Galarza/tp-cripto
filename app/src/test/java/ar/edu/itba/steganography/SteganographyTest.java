@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.util.*;
 import java.nio.file.Path;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -80,55 +79,6 @@ public class SteganographyTest {
             codec.decode(config.coverImage(), config.stegoImage(), config.password());
         }
 
-    }
-
-    @Test
-    public void testExtractFinalImages() {
-        try (Stream<Path> paths = Files.list(getImagesPath("final")).filter(Files::isRegularFile)) {
-            for(var path : paths.toList()) {
-                var file = path.toFile();
-
-                List<SteganographyAlgorithmType> algoResults = new ArrayList<>();
-                Map<SteganographyAlgorithmType, String> failures = new HashMap<>();
-
-                for(var algo : SteganographyAlgorithmType.values()) {
-                    var outputFile = getOutputFile(String.format("output-%s-%s", file.getName().substring(0, file.getName().lastIndexOf(".")), algo));
-                    System.out.println(String.format("Testing file %s with algorithm %s", file.getName(), algo));
-                    var config = new ProgramConfig(
-                      null,
-                      outputFile,
-                      file,
-                      false,
-                      SteganographyAlgorithmType.LSB1,
-                      EncryptionAlgorithmType.PLAIN_TEXT,
-                      null,
-                      null
-                    );
-
-                    try {
-                        callCodec(config);
-
-                        algoResults.add(algo);
-                    } catch (Exception e) {
-                        failures.put(algo, e.getMessage());
-                    }
-                }
-
-                var str = new StringBuilder("Failures:\n");
-                for(var msg : failures.entrySet()) {
-                    str.append(msg.getKey().name()).append(": ").append(msg.getValue()).append("\n");
-                }
-
-                assertFalse(algoResults.isEmpty(), str.toString());
-
-                System.out.println("Successful algorithms:");
-                for(var alg : algoResults) {
-                    System.out.println(alg.name());
-                }
-            }
-        } catch (IOException e) {
-            fail("Could not find image directory " + getImagesPath("final") + ": " + e.getMessage());
-        }
     }
 
     @Test

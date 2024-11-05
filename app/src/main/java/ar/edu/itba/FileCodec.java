@@ -16,9 +16,8 @@ public class FileCodec {
     private final StegoCodec steganographyAlgorithm;
 
     public FileCodec(
-        StegoCodec steganographyAlgorithm,
-        EncryptionAlgorithm encryptionAlgorithm
-    ) {
+            StegoCodec steganographyAlgorithm,
+            EncryptionAlgorithm encryptionAlgorithm) {
         this.encryptionAlgorithm = encryptionAlgorithm;
         this.steganographyAlgorithm = steganographyAlgorithm;
     }
@@ -29,21 +28,20 @@ public class FileCodec {
 
     public void encode(File input, File coverImage, File output, String password) {
         String inputExtension = input
-            .getName()
-            .substring(input.getName().lastIndexOf('.'));
+                .getName()
+                .substring(input.getName().lastIndexOf('.'));
 
         var message = new byte[4 +
-        (int) input.length() +
-        inputExtension.length() +
-        1];
+                (int) input.length() +
+                inputExtension.length() +
+                1];
 
         DataUtils.intToBytes((int) input.length(), message, 0);
         DataUtils.fileToBytes(input, message, 4);
         DataUtils.stringToBytes(
-            inputExtension,
-            message,
-            4 + (int) input.length()
-        );
+                inputExtension,
+                message,
+                4 + (int) input.length());
         if (requiresEncryption()) {
             var encryptedBytes = encryptionAlgorithm.encrypt(message, password);
 
@@ -55,20 +53,22 @@ public class FileCodec {
         try {
             var coverImageBuffer = new Image(new FileInputStream(coverImage));
             var secretImage = steganographyAlgorithm.encode(
-                message,
-                coverImageBuffer
-            );
-            secretImage.save(output);
+                    message,
+                    coverImageBuffer);
+            secretImage.save(
+                    new File(output.getAbsolutePath().substring(
+                            0,
+                            output.getAbsolutePath().lastIndexOf('.') != -1 ? output.getAbsolutePath().lastIndexOf('.')
+                                    : output.getAbsolutePath().length())
+                            + ".bmp"));
             System.err.println(
-                "Secret message encoded successfully as " + output.getName()
-            );
+                    "Secret message encoded successfully as " + secretImage.getName());
         } catch (IOException e) {
-            System.err.println("An error occurred while reading the file");
-            e.printStackTrace();
+            System.err.println("An error occurred while reading the file: " + e.getMessage());
+            // e.printStackTrace();
         } catch (SecretTooLargeException e) {
             System.err.println(
-                "The secret message is too large: " + e.getMessage()
-            );
+                    "The secret message is too large: " + e.getMessage());
         }
     }
 
@@ -79,11 +79,10 @@ public class FileCodec {
             var messageLength = DataUtils.bytesToInt(message, 0);
             System.out.println("Message length: " + messageLength);
 
-            if(requiresEncryption()) {
+            if (requiresEncryption()) {
                 var decryptedBytes = encryptionAlgorithm.decrypt(
-                  Arrays.copyOfRange(message, 4, 4 + messageLength),
-                  password
-                );
+                        Arrays.copyOfRange(message, 4, 4 + messageLength),
+                        password);
 
                 messageLength = DataUtils.bytesToInt(decryptedBytes, 0);
                 message = decryptedBytes;
@@ -96,35 +95,32 @@ public class FileCodec {
             }
 
             var messageExtension = DataUtils.bytesToString(
-                message,
-                4 + messageLength,
-                (byte) '\0'
-            );
+                    message,
+                    4 + messageLength,
+                    (byte) '\0');
 
             String newFilename = (output.getName().lastIndexOf('.') == -1)
-                ? output.getName()
-                : output
-                    .getName()
-                    .substring(0, output.getName().lastIndexOf('.'));
+                    ? output.getName()
+                    : output
+                            .getName()
+                            .substring(0, output.getName().lastIndexOf('.'));
 
             var fullOutput = new File(
-                    output.toPath().resolveSibling(newFilename + messageExtension).toString()
-            );
-            if(!fullOutput.exists()) {
+                    output.toPath().resolveSibling(newFilename + messageExtension).toString());
+            if (!fullOutput.exists()) {
                 fullOutput.createNewFile();
             }
             var renamed = output.renameTo(fullOutput);
-            if(!renamed) {
-                throw new RuntimeException("File " + fullOutput.getAbsolutePath() + " could not be created." + (output.canWrite() ?
-                                                                                                                  (fullOutput.canWrite() ? "" : " Cannot write dest file.") :
-                                                                                                                  " Cannot write source file."));
+            if (!renamed) {
+                throw new RuntimeException("File " + fullOutput.getAbsolutePath() + " could not be created."
+                        + (output.canWrite() ? (fullOutput.canWrite() ? "" : " Cannot write dest file.")
+                                : " Cannot write source file."));
             }
 
             // var outputFile = new File(output, messageExtension.toString());
             DataUtils.bytesToFile(message, 4, messageLength, fullOutput);
             System.out.println(
-                "Secret message decoded successfully as " + fullOutput.getName()
-            );
+                    "Secret message decoded successfully as " + fullOutput.getName());
             output.delete();
         } catch (IOException e) {
             System.err.println("An error occurred while reading the file");
