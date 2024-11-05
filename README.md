@@ -35,3 +35,8 @@ jpackage \
 --type app-image \
 --dest <output-path>
 ```
+
+## Correr con Gradle
+```bash
+./gradlew run --args="..."
+```
