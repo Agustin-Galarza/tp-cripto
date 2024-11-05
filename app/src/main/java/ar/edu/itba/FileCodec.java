@@ -57,13 +57,19 @@ public class FileCodec {
                 message,
                 image.getBody()
             );
-            var secretImage = image.writeNewBody(output.getAbsolutePath().substring(0, output.getAbsolutePath().lastIndexOf('.')) + ".bmp", secretImageBody);
+            var secretImage = image.writeNewBody(
+              output.getAbsolutePath().substring(
+                0,
+                output.getAbsolutePath().lastIndexOf('.') != -1 ? output.getAbsolutePath().lastIndexOf('.') : output.getAbsolutePath().length()
+              ) + ".bmp",
+              secretImageBody
+            );
 
             System.err.println(
                 "Secret message encoded successfully as " + secretImage.getName()
             );
         } catch (IOException e) {
-            System.err.println("An error occurred while reading the file");
+            System.err.println("An error occurred while reading the file: " + e.getMessage());
         } catch (SecretTooLargeException e) {
             System.err.println(
                 "The secret message is too large: " + e.getMessage()
