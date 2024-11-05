@@ -52,18 +52,15 @@ public class FileCodec {
         }
 
         try {
-            var coverImageBuffer = ImageIO.read(coverImage);
-            var secretImage = steganographyAlgorithm.encode(
+            var image = new Image(coverImage.getAbsolutePath());
+            var secretImageBody = steganographyAlgorithm.encode(
                 message,
-                coverImageBuffer
+                image.getBody()
             );
-            if (!ImageIO.write(secretImage, "bmp", output)) {
-                System.err.println("No codec found to write bmp image");
-                System.err.println("Supported writers: %s".formatted(String.join(", ", ImageIO.getWriterFormatNames())));
-                return;
-            }
+            var secretImage = image.writeNewBody(output.getAbsolutePath().substring(0, output.getAbsolutePath().lastIndexOf('.')) + ".bmp", secretImageBody);
+
             System.err.println(
-                "Secret message encoded successfully as " + output.getName()
+                "Secret message encoded successfully as " + secretImage.getName()
             );
         } catch (IOException e) {
             System.err.println("An error occurred while reading the file");

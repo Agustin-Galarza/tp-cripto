@@ -12,7 +12,7 @@ public interface StegoCodec {
      * @return The stego image with the secret message encoded.
      * @throws SecretTooLargeException If the secret message is too large to be encoded in the cover image.
      */
-    BufferedImage encode(byte[] secret, BufferedImage coverImage)
+    byte[] encode(byte[] secret, byte[] coverImage)
         throws SecretTooLargeException;
 
     /**

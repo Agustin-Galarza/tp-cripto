@@ -1,6 +1,7 @@
 package ar.edu.itba.steganography;
 
 import ar.edu.itba.steganography.exceptions.SecretTooLargeException;
+import ar.edu.itba.utils.DataUtils;
 import ar.edu.itba.utils.ImageUtils;
 
 import java.awt.*;
@@ -29,69 +30,23 @@ public class LSBNCodec implements StegoCodec {
     }
 
     @Override
-    public BufferedImage encode(byte[] secret, BufferedImage coverImage)
+    public byte[] encode(byte[] secret, byte[] coverImage)
         throws SecretTooLargeException {
-        var stegoImage = ImageUtils.deepCopy(coverImage);
-
-        int x = 0;
-        int y = coverImage.getHeight() - 1;
-        short c = 0; // RGB component: 0 = B, 1 = G, 2 = R
-        int[] rgb = new int[3]; // RGB values: 0 = B, 1 = G, 2 = R
+        if (secret.length * imageByteRatio >= coverImage.length) {
+            throw new SecretTooLargeException(
+              coverImage.length / imageByteRatio,
+              secret.length
+            );
+        }
+        int b = 0;
 
         for (byte s : secret) {
             for (int i = imageByteRatio-1; i >= 0; i--) {
-                rgb[c++] = s >>> (n * i) & dataMask;
-
-                if (c < 3) {
-                    continue;
-                }
-                c = 0;
-                if (y < 0) {
-                    throw new SecretTooLargeException(
-                        coverImage.getWidth() * coverImage.getHeight() * 3L / imageByteRatio,
-                        secret.length
-                    );
-                }
-                Color pixel = new Color(coverImage.getRGB(x, y));
-
-                int b = (pixel.getBlue() & pixelMask) | rgb[0];
-                int g = (pixel.getGreen() & pixelMask) | rgb[1];
-                int r = (pixel.getRed() & pixelMask) | rgb[2];
-
-                stegoImage.setRGB(x, y, new Color(r, g, b).getRGB());
-
-                x++;
-                if (x % coverImage.getWidth() == 0) {
-                    x = 0;
-                    y--;
-                }
+                coverImage[b++] = (byte) ((coverImage[b++] & pixelMask) | (s >>> (n * i) & dataMask));
             }
         }
-        if (c != 0) {
-            // Write the remaining bits
-            if (y < 0) {
-                throw new SecretTooLargeException(
-                        coverImage.getWidth() * coverImage.getHeight() * 3L / imageByteRatio,
-                        secret.length
-                );
-            }
-            Color pixel = new Color(coverImage.getRGB(x, y));
-            int b = pixel.getBlue();
-            int g = pixel.getGreen();
-            int r = pixel.getRed();
-            switch (c) {
-                case 1:
-                    b = (b & pixelMask) | rgb[0];
-                    break;
-                case 2:
-                    b = (b & pixelMask) | rgb[0];
-                    g = (g & pixelMask) | rgb[1];
-                    break;
-            }
-            stegoImage.setRGB(x, y, new Color(r, g, b).getRGB());
-        }
 
-        return stegoImage;
+        return coverImage;
     }
 
     @Override
