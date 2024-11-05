@@ -55,14 +55,14 @@ public class FileCodec {
             var secretImage = steganographyAlgorithm.encode(
                     message,
                     coverImageBuffer);
-            secretImage.save(
-                    new File(output.getAbsolutePath().substring(
-                            0,
-                            output.getAbsolutePath().lastIndexOf('.') != -1 ? output.getAbsolutePath().lastIndexOf('.')
-                                    : output.getAbsolutePath().length())
-                            + ".bmp"));
+            var outputFile = new File(output.getAbsolutePath().substring(
+                    0,
+                    output.getAbsolutePath().lastIndexOf('.') != -1 ? output.getAbsolutePath().lastIndexOf('.')
+                            : output.getAbsolutePath().length())
+                    + ".bmp");
+            secretImage.save(outputFile);
             System.err.println(
-                    "Secret message encoded successfully as " + secretImage.getName());
+                    "Secret message encoded successfully as " + outputFile.getName());
         } catch (IOException e) {
             System.err.println("An error occurred while reading the file: " + e.getMessage());
             // e.printStackTrace();

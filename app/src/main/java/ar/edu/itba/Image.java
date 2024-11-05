@@ -70,8 +70,9 @@ public class Image {
         return body;
     }
 
-    public void withBody(byte[] body) {
+    public Image withBody(byte[] body) {
         this.body = body;
+        return this;
     }
 
     public File save(File file) throws FileAlreadyExistsException, IOException {

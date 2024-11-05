@@ -1,5 +1,6 @@
 package ar.edu.itba.steganography;
 
+import ar.edu.itba.Image;
 import ar.edu.itba.steganography.exceptions.SecretTooLargeException;
 import ar.edu.itba.utils.DataUtils;
 import ar.edu.itba.utils.ImageUtils;
@@ -30,8 +31,10 @@ public class LSBNCodec implements StegoCodec {
     }
 
     @Override
-    public byte[] encode(byte[] secret, byte[] coverImage)
+    public Image encode(byte[] secret, Image coverImage2)
         throws SecretTooLargeException {
+        var coverImage = coverImage2.getBody().clone();
+
         if (secret.length * imageByteRatio >= coverImage.length) {
             throw new SecretTooLargeException(
               coverImage.length / imageByteRatio,
@@ -42,19 +45,21 @@ public class LSBNCodec implements StegoCodec {
 
         for (byte s : secret) {
             for (int i = imageByteRatio-1; i >= 0; i--) {
-                coverImage[b++] = (byte) ((coverImage[b++] & pixelMask) | (s >>> (n * i) & dataMask));
+                coverImage[b] = (byte) ((coverImage[b] & pixelMask) | (s >>> (n * i) & dataMask));
+                b++;
+
             }
         }
 
-        return coverImage;
+        return coverImage2.withBody(coverImage);
     }
 
     @Override
-    public byte[] decode(byte[] imageBytes) {
+    public byte[] decode(Image imageBytes) {
         var secret = new ArrayList<Byte>(256);
         short v = 0;
         int[] values = new int[imageByteRatio];
-        for (var b : imageBytes) {
+        for (var b : imageBytes.getBody()) {
             values[v++] = b & dataMask;
             if (v == imageByteRatio) {
                 byte s = 0;
