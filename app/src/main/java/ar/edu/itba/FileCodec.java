@@ -5,6 +5,7 @@ import ar.edu.itba.steganography.*;
 import ar.edu.itba.steganography.exceptions.*;
 import ar.edu.itba.utils.*;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import javax.imageio.ImageIO;
@@ -52,21 +53,18 @@ public class FileCodec {
         }
 
         try {
-            var coverImageBuffer = ImageIO.read(coverImage);
+            var coverImageBuffer = new Image(new FileInputStream(coverImage));
             var secretImage = steganographyAlgorithm.encode(
                 message,
                 coverImageBuffer
             );
-            if (!ImageIO.write(secretImage, "bmp", output)) {
-                System.err.println("No codec found to write bmp image");
-                System.err.println("Supported writers: %s".formatted(String.join(", ", ImageIO.getWriterFormatNames())));
-                return;
-            }
+            secretImage.save(output);
             System.err.println(
                 "Secret message encoded successfully as " + output.getName()
             );
         } catch (IOException e) {
             System.err.println("An error occurred while reading the file");
+            e.printStackTrace();
         } catch (SecretTooLargeException e) {
             System.err.println(
                 "The secret message is too large: " + e.getMessage()
@@ -76,7 +74,7 @@ public class FileCodec {
 
     public void decode(File input, File output, String password) {
         try {
-            var secretImage = DataUtils.readImage(input);
+            var secretImage = new Image(new FileInputStream(input));
             var message = steganographyAlgorithm.decode(secretImage);
             var messageLength = DataUtils.bytesToInt(message, 0);
             System.out.println("Message length: " + messageLength);
@@ -112,8 +110,8 @@ public class FileCodec {
             var fullOutput = new File(
                     output.toPath().resolveSibling(newFilename + messageExtension).toString()
             );
-            if(fullOutput.exists()) {
-                throw new RuntimeException("Destination file with decoded extension: " + fullOutput.getAbsolutePath() + " already exists");
+            if(!fullOutput.exists()) {
+                fullOutput.createNewFile();
             }
             var renamed = output.renameTo(fullOutput);
             if(!renamed) {

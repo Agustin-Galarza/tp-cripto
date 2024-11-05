@@ -1,14 +1,22 @@
 package ar.edu.itba.steganography;
 
+import ar.edu.itba.Image;
 import ar.edu.itba.steganography.exceptions.SecretTooLargeException;
 import ar.edu.itba.utils.ImageUtils;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOError;
+import java.io.IOException;
+import java.io.SequenceInputStream;
 import java.util.*;
 import java.util.List;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+
+import javax.imageio.ImageIO;
 
 public class LSBICodec implements StegoCodec {
     private static final int PATTERN_INFO_BIT_SIZE = 4;
@@ -57,7 +65,9 @@ public class LSBICodec implements StegoCodec {
     }
 
     @Override
-    public BufferedImage encode(byte[] secret, BufferedImage coverImage) throws SecretTooLargeException {
+    public Image encode(byte[] secret, Image coverImage2) throws SecretTooLargeException {
+        var coverImage = coverImage2.toBufferedImage();
+
         var imageHeight = coverImage.getHeight();
         var imageWidth = coverImage.getWidth();
         var stegoImage = ImageUtils.deepCopy(coverImage);
@@ -177,28 +187,39 @@ public class LSBICodec implements StegoCodec {
             var pixel = new Color(coverImage.getRGB(x, y));
             var b = (pixel.getBlue() & PIXEL_MASK) |
                       (swappedPatterns.contains(getPattern(pixel.getBlue())) ? swapBit(colors[0]) : colors[0]);
-
             stegoImage.setRGB(x, y, new Color(pixel.getRed(), pixel.getGreen(), b).getRGB());
         }
 
-        return stegoImage;
+        return Image.fromBufferedImage(stegoImage);
     }
 
     @Override
-    public byte[] decode(byte[] imageBytes) {
+    public byte[] decode(Image data) {
+        var stegoImage = data.toBufferedImage();
         var secret = new ArrayList<Byte>(256);
         int[] values = new int[8];
         short v = 0;
 
+        var imagePixels = stegoImage.getRGB(
+          0,
+          0,
+          stegoImage.getWidth(),
+          stegoImage.getHeight(),
+          null,
+          0,
+          stegoImage.getWidth()
+        );
+
         var swappedPatterns = new HashSet<>(4);
 
-        var i = 0;
+        int x = 0;
+        int y = stegoImage.getHeight() - 1;
 
-        i += 3;
+        var firstPixel = new Color(imagePixels[x++ + y * stegoImage.getWidth()]);
 
         // Read first three patterns
-        for (var bIndex = 0; bIndex < 3; bIndex ++) {
-            var b = imageBytes[bIndex];
+        int bIndex = 0;
+        for (int b : List.of(firstPixel.getBlue(), firstPixel.getGreen(), firstPixel.getRed())) {
             if ((b & DATA_MASK) == 1) {
                 swappedPatterns.add(switch (bIndex) {
                     case 0 -> 0b00;
@@ -207,30 +228,52 @@ public class LSBICodec implements StegoCodec {
                     default -> throw new IllegalStateException("Unexpected value for iterator: " + bIndex);
                 });
             }
+            bIndex++;
         }
         // Read the last pattern
-        int secondPixelBlueChannel = imageBytes[i++];
+        int secondPixelBlueChannel = (new Color(imagePixels[x + y * stegoImage.getWidth()])).getBlue();
         if ((secondPixelBlueChannel & DATA_MASK) == 1) {
             swappedPatterns.add(0b11);
         }
+        boolean startOffset = true; // Since we read the first channel (blue), we have to start reading the second
+        // one in the loop (green)
 
-        for(; i < imageBytes.length; i++) {
-            var b = imageBytes[i];
-
-            values[v++] = swappedPatterns.contains(getPattern(b)) ? swapBit(b & DATA_MASK) : b & DATA_MASK;
-            if (v == 8) {
-                byte s = 0;
-                for (int j = 0; j < 8; j++) {
-                    s |= (byte) (values[j] << (7 - j));
+        for(; y >= 0; y--) {
+            if(!startOffset) {
+                x = 0;
+            }
+            for (; x < stegoImage.getWidth(); x++) {
+                int index = x + y * stegoImage.getWidth();
+                var pixel = new Color(imagePixels[index]);
+                int c = 0;
+                if (startOffset) {
+                    c = 1;
+                    startOffset = false;
                 }
-                secret.add(s);
-                v = 0;
+                for (; c < 2; c++) {
+                    var b = switch (c) {
+                        case 0 -> pixel.getBlue();
+                        case 1 -> pixel.getGreen();
+                        default -> throw new IllegalStateException(
+                          "Unexpected value: " + c);
+                    };
+
+                    values[v++] = swappedPatterns.contains(getPattern(b)) ? swapBit(b & DATA_MASK) : b & DATA_MASK;
+                    if (v == 8) {
+                        byte s = 0;
+                        for (int j = 0; j < 8; j++) {
+                            s |= (byte) (values[j] << (7 - j));
+                        }
+                        secret.add(s);
+                        v = 0;
+                    }
+                }
             }
         }
 
         var result = new byte[secret.size()];
-        for (int j = 0; j < secret.size(); j++) {
-            result[j] = secret.get(j);
+        for (int i = 0; i < secret.size(); i++) {
+            result[i] = secret.get(i);
         }
         return result;
     }

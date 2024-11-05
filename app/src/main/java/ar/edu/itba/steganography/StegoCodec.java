@@ -1,5 +1,6 @@
 package ar.edu.itba.steganography;
 
+import ar.edu.itba.Image;
 import ar.edu.itba.steganography.exceptions.SecretTooLargeException;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -12,7 +13,7 @@ public interface StegoCodec {
      * @return The stego image with the secret message encoded.
      * @throws SecretTooLargeException If the secret message is too large to be encoded in the cover image.
      */
-    BufferedImage encode(byte[] secret, BufferedImage coverImage)
+    Image encode(byte[] secret, Image coverImage)
         throws SecretTooLargeException;
 
     /**
@@ -20,5 +21,5 @@ public interface StegoCodec {
      * @param stegoImage The stego image to decode the secret message from.
      * @return The secret message decoded from the stego image.
      */
-    byte[] decode(byte[] stegoImage);
+    byte[] decode(Image stegoImage);
 }
